@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 2 - Day/Night Cycle</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .sky-container {
+            position: relative;
+            height: calc(100vh - 60px);
+            overflow: hidden;
+            transition: background 1s ease;
+        }
+        
+        /* Sky gradient backgrounds */
+        .sky-container.night { background: linear-gradient(to bottom, #0a0a1a 0%, #1a1a3a 50%, #2a2a4a 100%); }
+        .sky-container.dawn { background: linear-gradient(to bottom, #1a1a3a 0%, #4a3a5a 30%, #ff7b4a 70%, #ffaa6a 100%); }
+        .sky-container.morning { background: linear-gradient(to bottom, #4a8fcc 0%, #7ab8e8 50%, #b8d4e8 100%); }
+        .sky-container.day { background: linear-gradient(to bottom, #2a7fd4 0%, #5aa8e8 50%, #87ceeb 100%); }
+        .sky-container.afternoon { background: linear-gradient(to bottom, #4a8fcc 0%, #7ab8e8 50%, #c8dce8 100%); }
+        .sky-container.dusk { background: linear-gradient(to bottom, #3a3a5a 0%, #8a5a6a 30%, #ff6b4a 70%, #ff8a5a 100%); }
+
+        .celestial-body {
+            position: absolute;
+            font-size: 12vw;
+            transition: all 0.5s ease;
+            filter: drop-shadow(0 0 20px currentColor);
+        }
+        
+        .sun { color: #ffdd00; filter: drop-shadow(0 0 40px #ffaa00); }
+        .moon { color: #e8e8f0; filter: drop-shadow(0 0 30px #aaaacc); }
+        
+        .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 15%;
+            background: linear-gradient(to bottom, #2a5a2a, #1a3a1a);
+            border-top: 3px solid #3a7a3a;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 15%;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        .sky-container.night .stars,
+        .sky-container.dawn .stars,
+        .sky-container.dusk .stars { opacity: 1; }
+        .sky-container.dawn .stars,
+        .sky-container.dusk .stars { opacity: 0.3; }
+
+        .star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .time-label {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .phase-info {
+            position: absolute;
+            top: 4rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            color: rgba(255,255,255,0.7);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .calibration-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .calibration-overlay.hidden { display: none; }
+        .calibration-text { font-size: 2rem; color: #ffd700; margin-bottom: 1rem; }
+        .calibration-sun { font-size: 15vw; animation: pulse 1s ease-in-out infinite; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .calibration-progress { margin-top: 2rem; font-size: 1.2rem; color: #aaa; }
+        .calibration-max { margin-top: 0.5rem; font-size: 1rem; color: #666; }
+
+        .stats {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            color: rgba(255,255,255,0.6);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            z-index: 10;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+        }
+
+        .topic-display {
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            z-index: 10;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <main class="sky-container night" id="sky">
+        <div class="calibration-overlay" id="calibrationOverlay">
+            <div class="calibration-text">☀️ Calibrating Sun Sensor</div>
+            <div class="calibration-sun">🌞</div>
+            <div class="calibration-progress">Measurements: <span id="calibCount">0</span> / 20</div>
+            <div class="calibration-max">Max value: <span id="calibMax">--</span></div>
+        </div>
+
+        <div class="stars" id="stars"></div>
+        <div class="celestial-body sun" id="sun">☀️</div>
+        <div class="celestial-body moon" id="moon">🌕</div>
+        <div class="ground"></div>
+        
+        <div class="time-label" id="timeLabel">Night</div>
+        <div class="phase-info" id="phaseInfo">🌕 Full Moon</div>
+        
+        <div class="stats">
+            <div>Value: <span id="currentValue">--</span> | Max: <span id="maxValue">--</span></div>
+            <div>Cycle: <span id="cyclePercent">--</span>%</div>
+        </div>
+
+        <div class="topic-display">topic: sensor/value</div>
+    </main>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script>
+        const TOPIC = 'sensor/value';
+        const CALIBRATION_COUNT = 20;
+
+        const moonPhases = [
+            { emoji: '🌑', name: 'New Moon' },
+            { emoji: '🌒', name: 'Waxing Crescent' },
+            { emoji: '🌓', name: 'First Quarter' },
+            { emoji: '🌔', name: 'Waxing Gibbous' },
+            { emoji: '🌕', name: 'Full Moon' },
+            { emoji: '🌖', name: 'Waning Gibbous' },
+            { emoji: '🌗', name: 'Last Quarter' },
+            { emoji: '🌘', name: 'Waning Crescent' }
+        ];
+
+        const timeOfDay = [
+            { name: 'Night', class: 'night', sunVisible: false, moonVisible: true },
+            { name: 'Dawn', class: 'dawn', sunVisible: true, moonVisible: true },
+            { name: 'Morning', class: 'morning', sunVisible: true, moonVisible: false },
+            { name: 'Midday', class: 'day', sunVisible: true, moonVisible: false },
+            { name: 'Afternoon', class: 'afternoon', sunVisible: true, moonVisible: false },
+            { name: 'Dusk', class: 'dusk', sunVisible: true, moonVisible: true },
+        ];
+
+        let measurementCount = 0;
+        let maxSunValue = 0;
+        let isCalibrated = false;
+        let moonPhaseIndex = 4; // Start at full moon
+        let lastValue = null;
+        let cyclePosition = 0; // 0 to 1, continuously rotating
+        let inFirstHalf = true; // true = descending (max→0), false = ascending (0→max)
+
+        const sky = document.getElementById('sky');
+        const sun = document.getElementById('sun');
+        const moon = document.getElementById('moon');
+        const starsContainer = document.getElementById('stars');
+        const timeLabel = document.getElementById('timeLabel');
+        const phaseInfo = document.getElementById('phaseInfo');
+        const calibrationOverlay = document.getElementById('calibrationOverlay');
+        const calibCountEl = document.getElementById('calibCount');
+        const calibMaxEl = document.getElementById('calibMax');
+        const currentValueEl = document.getElementById('currentValue');
+        const maxValueEl = document.getElementById('maxValue');
+        const cyclePercentEl = document.getElementById('cyclePercent');
+
+        // Generate stars
+        function generateStars() {
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                star.style.width = (Math.random() * 2 + 1) + 'px';
+                star.style.height = star.style.width;
+                starsContainer.appendChild(star);
+            }
+        }
+        generateStars();
+
+        function updateCalibration(value) {
+            measurementCount++;
+            if (value > maxSunValue) {
+                maxSunValue = value;
+            }
+            calibCountEl.textContent = measurementCount;
+            calibMaxEl.textContent = maxSunValue;
+
+            if (measurementCount >= CALIBRATION_COUNT) {
+                isCalibrated = true;
+                calibrationOverlay.classList.add('hidden');
+                maxValueEl.textContent = maxSunValue;
+            }
+        }
+
+        // Rotating circle animation - sun and moon on opposite ends
+        function positionCelestialBodies(cyclePosition) {
+            const viewWidth = window.innerWidth;
+            const viewHeight = window.innerHeight - 60; // minus navbar
+            const groundHeight = viewHeight * 0.15;
+            
+            // Center of rotation (center of sky area, slightly above ground)
+            const centerX = viewWidth / 2;
+            const centerY = (viewHeight - groundHeight) * 0.6;
+            
+            // Radius of the circle
+            const radius = Math.min(viewWidth, viewHeight - groundHeight) * 0.38;
+            
+            // Convert cycle position (0-1) to angle for full 360° rotation
+            // 0 = midnight (sun at bottom)
+            // 0.25 = sunrise (sun on left, rising)
+            // 0.5 = noon (sun at top)
+            // 0.75 = sunset (sun on right, setting)
+            // 1 = midnight again
+            // Start at bottom (3π/2 or -π/2), rotate counter-clockwise
+            const angle = (cyclePosition * 2 * Math.PI) + (Math.PI / 2);
+            
+            // Sun position - using sin for Y so 0 cycle = bottom, 0.5 cycle = top
+            const sunX = centerX + Math.cos(angle) * radius;
+            const sunY = centerY + Math.sin(angle) * radius;
+            
+            // Moon is exactly opposite (180° offset)
+            const moonX = centerX + Math.cos(angle + Math.PI) * radius;
+            const moonY = centerY + Math.sin(angle + Math.PI) * radius;
+            
+            sun.style.left = (sunX - sun.offsetWidth / 2) + 'px';
+            sun.style.top = sunY + 'px';
+            
+            moon.style.left = (moonX - moon.offsetWidth / 2) + 'px';
+            moon.style.top = moonY + 'px';
+        }
+
+        function updateScene(value) {
+            currentValueEl.textContent = value;
+            
+            // Normalized value: 1 = max, 0 = minimum
+            const normalizedValue = Math.min(1, Math.max(0, value / maxSunValue));
+            
+            // Detect direction changes to know which half of the cycle we're in
+            if (lastValue !== null) {
+                const delta = value - lastValue;
+                // Use threshold to avoid noise
+                if (Math.abs(delta) > maxSunValue * 0.02) {
+                    const wasInFirstHalf = inFirstHalf;
+                    
+                    if (delta < 0) {
+                        // Value decreasing = first half (max → 0)
+                        inFirstHalf = true;
+                    } else {
+                        // Value increasing = second half (0 → max)
+                        inFirstHalf = false;
+                    }
+                    
+                    // Completed a full cycle when transitioning from second half back to first
+                    if (!wasInFirstHalf && inFirstHalf) {
+                        moonPhaseIndex = (moonPhaseIndex + 1) % 8;
+                    }
+                }
+            }
+            lastValue = value;
+            
+            // Calculate cycle position (0 to 1, continuous rotation)
+            // Brightest (max value) = noon (0.5), Darkest (min value) = midnight (0 or 1)
+            // First half (max→0): normalizedValue goes 1→0, cyclePosition goes 0.5→1 (noon to midnight)
+            // Second half (0→max): normalizedValue goes 0→1, cyclePosition goes 0→0.5 (midnight to noon)
+            if (inFirstHalf) {
+                // Descending: max→0 maps to 0.5→1 (afternoon/dusk/night)
+                cyclePosition = 0.5 + (1 - normalizedValue) * 0.5;
+            } else {
+                // Ascending: 0→max maps to 0→0.5 (night/dawn/morning/noon)
+                cyclePosition = normalizedValue * 0.5;
+            }
+            
+            // Convert cycle position to percentage for display (0-100%)
+            const percentage = cyclePosition * 100;
+            cyclePercentEl.textContent = percentage.toFixed(1);
+
+            // Determine time of day based on cycle position
+            // 0% = midnight (min value, darkest)
+            // 25% = dawn/sunrise
+            // 50% = noon (max value, brightest, sun at peak)
+            // 75% = dusk/sunset  
+            // 100% = midnight again
+            let timeIndex;
+            if (cyclePosition < 0.08 || cyclePosition > 0.92) {
+                timeIndex = 0; // Night (midnight)
+            } else if (cyclePosition < 0.20) {
+                timeIndex = 1; // Dawn
+            } else if (cyclePosition < 0.40) {
+                timeIndex = 2; // Morning
+            } else if (cyclePosition < 0.60) {
+                timeIndex = 3; // Midday
+            } else if (cyclePosition < 0.80) {
+                timeIndex = 4; // Afternoon
+            } else {
+                timeIndex = 5; // Dusk
+            }
+
+            const time = timeOfDay[timeIndex];
+            
+            // Update sky
+            sky.className = 'sky-container ' + time.class;
+            timeLabel.textContent = time.name;
+
+            // Position celestial bodies on rotating circle
+            positionCelestialBodies(cyclePosition);
+            
+            // Sun visible when above horizon (roughly upper half of rotation)
+            // cyclePosition 0.25 = sunrise, 0.75 = sunset
+            const sunAboveHorizon = cyclePosition > 0.20 && cyclePosition < 0.80;
+            sun.style.opacity = sunAboveHorizon ? '1' : '0.3';
+            
+            // Moon is opposite - visible when sun is below horizon
+            const moonAboveHorizon = cyclePosition < 0.30 || cyclePosition > 0.70;
+            moon.style.opacity = moonAboveHorizon ? '1' : '0.3';
+            
+            const phase = moonPhases[moonPhaseIndex];
+            moon.textContent = phase.emoji;
+            phaseInfo.textContent = phase.emoji + ' ' + phase.name;
+            phaseInfo.style.opacity = moonAboveHorizon ? '1' : '0.3';
+        }
+
+        function handleMessage(topic, payload) {
+            if (topic !== TOPIC) return;
+
+            const value = parseFloat(payload);
+            if (isNaN(value)) return;
+
+            if (!isCalibrated) {
+                updateCalibration(value);
+            } else {
+                updateScene(value);
+            }
+        }
+
+        // Initial positioning - start at midnight (cycle position 0)
+        sun.style.opacity = '0.3';
+        moon.style.opacity = '1';
+        positionCelestialBodies(0);
+        inFirstHalf = false; // Start in ascending phase (0→max = night→noon)
+
+        MQTTClient.on('onConnect', () => MQTTClient.subscribe(TOPIC));
+        MQTTClient.on('onMessage', handleMessage);
+
+        if (MQTTClient.isConnected()) MQTTClient.subscribe(TOPIC);
+    </script>
+</body>
+</html>

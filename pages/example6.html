@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Whiteboard - MQTT Examples</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .whiteboard-container {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-picker label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .color-picker input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            padding: 2px;
+        }
+
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brush-size label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .brush-size input[type="range"] {
+            width: 100px;
+            accent-color: var(--primary);
+        }
+
+        .brush-size span {
+            color: var(--text);
+            font-size: 0.875rem;
+            min-width: 30px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        #whiteboard {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .cursor {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: left 0.05s linear, top 0.05s linear;
+        }
+
+        .cursor-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+        }
+
+        .cursor-label {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .users-panel {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .users-panel h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        .users-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg);
+            padding: 0.5rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+
+        .user-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .user-name {
+            color: var(--text);
+        }
+
+        .user-badge.you {
+            border: 1px solid var(--primary);
+        }
+
+        .clear-btn {
+            background: var(--danger);
+            color: white;
+        }
+
+        .clear-btn:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .info-text {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .info-text code {
+            background: var(--bg);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <main class="container">
+        <section class="hero">
+            <h1>Shared Whiteboard</h1>
+            <p>Collaborative drawing canvas synced via MQTT</p>
+        </section>
+
+        <div class="whiteboard-container">
+            <div class="toolbar">
+                <div class="color-picker">
+                    <label for="colorPicker">Color:</label>
+                    <input type="color" id="colorPicker" value="#0ea5e9">
+                </div>
+                <div class="brush-size">
+                    <label for="brushSize">Brush:</label>
+                    <input type="range" id="brushSize" min="2" max="30" value="5">
+                    <span id="brushSizeValue">5px</span>
+                </div>
+                <button id="clearBtn" class="btn clear-btn">Clear Canvas</button>
+            </div>
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="whiteboard" width="800" height="500"></canvas>
+            </div>
+            <p class="info-text">
+                Topic: <code>whiteboard/draw</code> | Cursors: <code>whiteboard/cursor</code>
+            </p>
+        </div>
+
+        <div class="users-panel">
+            <h3>Active Users</h3>
+            <div class="users-list" id="usersList">
+                <!-- Users will be added dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script src="../js/whiteboard.js"></script>
+</body>
+</html>

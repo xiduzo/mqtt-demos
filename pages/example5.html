@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 5 - RGB Color Mixer</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .color-container {
+            position: relative;
+            min-height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.1s ease;
+            padding: 2rem;
+        }
+
+        .color-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .color-preview {
+            width: 100%;
+            height: 120px;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: background-color 0.1s ease;
+        }
+
+        .slider-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .slider-label .channel {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .slider-label .value {
+            font-family: 'Monaco', 'Menlo', monospace;
+            min-width: 3ch;
+            text-align: right;
+        }
+
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .color-dot.red { background: #e74c3c; }
+        .color-dot.green { background: #27ae60; }
+        .color-dot.blue { background: #3498db; }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-red {
+            background: linear-gradient(to right, #000, #e74c3c);
+        }
+        .slider-red::-webkit-slider-thumb { background: #e74c3c; }
+
+        .slider-green {
+            background: linear-gradient(to right, #000, #27ae60);
+        }
+        .slider-green::-webkit-slider-thumb { background: #27ae60; }
+
+        .slider-blue {
+            background: linear-gradient(to right, #000, #3498db);
+        }
+        .slider-blue::-webkit-slider-thumb { background: #3498db; }
+
+        .topic-info {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .topic-info div {
+            margin: 0.25rem 0;
+        }
+
+        .sync-indicator {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sync-indicator.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <main class="color-container" id="colorContainer">
+        <div class="sync-indicator" id="syncIndicator">📡 Synced from MQTT</div>
+        
+        <div class="color-panel">
+            <div class="color-preview" id="colorPreview">
+                <span id="hexValue">#000000</span>
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="channel"><span class="color-dot red"></span> Red</span>
+                    <span class="value" id="redValue">0</span>
+                </div>
+                <input type="range" id="redSlider" class="slider-red" min="0" max="255" value="0">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="channel"><span class="color-dot green"></span> Green</span>
+                    <span class="value" id="greenValue">0</span>
+                </div>
+                <input type="range" id="greenSlider" class="slider-green" min="0" max="255" value="0">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span class="channel"><span class="color-dot blue"></span> Blue</span>
+                    <span class="value" id="blueValue">0</span>
+                </div>
+                <input type="range" id="blueSlider" class="slider-blue" min="0" max="255" value="0">
+            </div>
+
+            <div class="topic-info">
+                <div>mdd/color/red (0-255)</div>
+                <div>mdd/color/green (0-255)</div>
+                <div>mdd/color/blue (0-255)</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script>
+        const TOPICS = {
+            red: 'mdd/color/red',
+            green: 'mdd/color/green',
+            blue: 'mdd/color/blue'
+        };
+
+        const colorContainer = document.getElementById('colorContainer');
+        const colorPreview = document.getElementById('colorPreview');
+        const hexValue = document.getElementById('hexValue');
+        const syncIndicator = document.getElementById('syncIndicator');
+
+        const sliders = {
+            red: document.getElementById('redSlider'),
+            green: document.getElementById('greenSlider'),
+            blue: document.getElementById('blueSlider')
+        };
+
+        const valueDisplays = {
+            red: document.getElementById('redValue'),
+            green: document.getElementById('greenValue'),
+            blue: document.getElementById('blueValue')
+        };
+
+        let color = { red: 0, green: 0, blue: 0 };
+        let isRemoteUpdate = false;
+
+        function updateColor() {
+            const { red, green, blue } = color;
+            const rgbString = `rgb(${red}, ${green}, ${blue})`;
+            const hexString = '#' + [red, green, blue]
+                .map(v => v.toString(16).padStart(2, '0'))
+                .join('');
+
+            colorContainer.style.backgroundColor = rgbString;
+            colorPreview.style.backgroundColor = rgbString;
+            
+            // Adjust text color for readability
+            const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+            const textColor = brightness > 128 ? '#000' : '#fff';
+            hexValue.style.color = textColor;
+            hexValue.textContent = hexString.toUpperCase();
+
+            // Update value displays
+            valueDisplays.red.textContent = red;
+            valueDisplays.green.textContent = green;
+            valueDisplays.blue.textContent = blue;
+
+            // Update slider positions
+            sliders.red.value = red;
+            sliders.green.value = green;
+            sliders.blue.value = blue;
+        }
+
+        function showSyncIndicator() {
+            syncIndicator.classList.add('show');
+            setTimeout(() => syncIndicator.classList.remove('show'), 1000);
+        }
+
+        function handleSliderInput(channel) {
+            const value = parseInt(sliders[channel].value);
+            color[channel] = value;
+            updateColor();
+
+            if (MQTTClient.isConnected()) {
+                MQTTClient.publish(TOPICS[channel], String(value));
+            }
+        }
+
+        // Slider event listeners
+        Object.keys(sliders).forEach(channel => {
+            sliders[channel].addEventListener('input', () => handleSliderInput(channel));
+        });
+
+        // MQTT message handler
+        function handleMQTTMessage(topic, payload) {
+            const value = parseInt(payload);
+            if (isNaN(value) || value < 0 || value > 255) return;
+
+            let channel = null;
+            if (topic === TOPICS.red) channel = 'red';
+            else if (topic === TOPICS.green) channel = 'green';
+            else if (topic === TOPICS.blue) channel = 'blue';
+
+            if (channel && color[channel] !== value) {
+                color[channel] = value;
+                updateColor();
+                showSyncIndicator();
+            }
+        }
+
+        MQTTClient.on('onMessage', handleMQTTMessage);
+
+        MQTTClient.on('onConnect', () => {
+            MQTTClient.subscribe(TOPICS.red);
+            MQTTClient.subscribe(TOPICS.green);
+            MQTTClient.subscribe(TOPICS.blue);
+        });
+
+        // Initialize
+        updateColor();
+    </script>
+</body>
+</html>

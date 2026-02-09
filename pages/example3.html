@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 3 - Windmill</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .windmill-container {
+            position: relative;
+            height: calc(100vh - 60px);
+            background: linear-gradient(to bottom, #87ceeb 0%, #b8d4e8 60%, #90c695 60%, #5a8a5e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .windmill {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .windmill-head {
+            position: relative;
+            z-index: 2;
+        }
+
+        .blades-container {
+            position: relative;
+            width: 30vmin;
+            height: 30vmin;
+        }
+
+        .blades {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .blade {
+            position: absolute;
+            width: 4vmin;
+            height: 14vmin;
+            background: linear-gradient(to right, #f5f5f5, #e0e0e0, #f5f5f5);
+            border-radius: 2vmin 2vmin 0.5vmin 0.5vmin;
+            left: 50%;
+            top: 50%;
+            transform-origin: center bottom;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .blade:nth-child(1) { transform: translateX(-50%) translateY(-100%) rotate(0deg); }
+        .blade:nth-child(2) { transform: translateX(-50%) translateY(-100%) rotate(90deg); }
+        .blade:nth-child(3) { transform: translateX(-50%) translateY(-100%) rotate(180deg); }
+        .blade:nth-child(4) { transform: translateX(-50%) translateY(-100%) rotate(270deg); }
+
+        .hub {
+            position: absolute;
+            width: 5vmin;
+            height: 5vmin;
+            background: radial-gradient(circle at 30% 30%, #8b4513, #5d2e0a);
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .tower {
+            width: 6vmin;
+            height: 35vmin;
+            background: linear-gradient(to right, #d4a574, #c49464, #d4a574);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            margin-top: -2vmin;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+        }
+
+        .wind-indicator {
+            position: absolute;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: #2a5a2a;
+            text-shadow: 0 1px 3px rgba(255,255,255,0.5);
+        }
+
+        .wind-speed {
+            font-size: 4rem;
+            font-weight: 700;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .wind-label {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .wind-description {
+            font-size: 1rem;
+            margin-top: 0.5rem;
+            opacity: 0.7;
+        }
+
+        .clouds {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .cloud {
+            position: absolute;
+            font-size: 5vmin;
+            opacity: 0.8;
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.1));
+        }
+
+        .grass {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 5%;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        .grass-blade {
+            width: 3px;
+            height: 20px;
+            background: #3a6a3e;
+            transform-origin: bottom center;
+            border-radius: 3px 3px 0 0;
+        }
+
+        .stats {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            color: #2a5a2a;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.7);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+        }
+
+        .topic-display {
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #2a5a2a;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            background: rgba(255,255,255,0.7);
+            padding: 0.3rem 0.8rem;
+            border-radius: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <main class="windmill-container">
+        <div class="clouds" id="clouds"></div>
+        
+        <div class="wind-indicator">
+            <div class="wind-speed" id="windSpeed">0</div>
+            <div class="wind-label">Wind Speed</div>
+            <div class="wind-description" id="windDescription">No wind</div>
+        </div>
+
+        <div class="windmill">
+            <div class="windmill-head">
+                <div class="blades-container">
+                    <div class="blades" id="blades">
+                        <div class="blade"></div>
+                        <div class="blade"></div>
+                        <div class="blade"></div>
+                        <div class="blade"></div>
+                    </div>
+                    <div class="hub"></div>
+                </div>
+            </div>
+            <div class="tower"></div>
+        </div>
+
+        <div class="grass" id="grass"></div>
+
+        <div class="stats">
+            <div>Sensor: <span id="sensorValue">--</span></div>
+            <div>RPM: <span id="rpm">0</span></div>
+        </div>
+
+        <div class="topic-display">topic: sensor/value</div>
+    </main>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script>
+        const TOPIC = 'sensor/value';
+        const MAX_VALUE = 360;
+
+        const blades = document.getElementById('blades');
+        const windSpeedEl = document.getElementById('windSpeed');
+        const windDescEl = document.getElementById('windDescription');
+        const sensorValueEl = document.getElementById('sensorValue');
+        const rpmEl = document.getElementById('rpm');
+        const cloudsContainer = document.getElementById('clouds');
+        const grassContainer = document.getElementById('grass');
+
+        let currentRotation = 0;
+        let currentSpeed = 0;
+        let targetSpeed = 0;
+        let lastWindValue = 0;
+
+        const windDescriptions = [
+            { max: 0, text: 'No wind', emoji: '🍃' },
+            { max: 30, text: 'Light breeze', emoji: '🌬️' },
+            { max: 90, text: 'Gentle wind', emoji: '🌬️' },
+            { max: 180, text: 'Moderate wind', emoji: '💨' },
+            { max: 270, text: 'Strong wind', emoji: '💨' },
+            { max: 360, text: 'Full wind speed!', emoji: '🌪️' }
+        ];
+
+        // Generate clouds
+        function generateClouds() {
+            for (let i = 0; i < 5; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.textContent = '☁️';
+                cloud.style.left = (Math.random() * 100) + '%';
+                cloud.style.top = (Math.random() * 40 + 5) + '%';
+                cloud.style.fontSize = (Math.random() * 4 + 3) + 'vmin';
+                cloud.dataset.baseLeft = parseFloat(cloud.style.left);
+                cloudsContainer.appendChild(cloud);
+            }
+        }
+        generateClouds();
+
+        // Generate grass
+        function generateGrass() {
+            for (let i = 0; i < 50; i++) {
+                const blade = document.createElement('div');
+                blade.className = 'grass-blade';
+                blade.style.height = (Math.random() * 15 + 10) + 'px';
+                grassContainer.appendChild(blade);
+            }
+        }
+        generateGrass();
+
+        function getWindDescription(value) {
+            for (const desc of windDescriptions) {
+                if (value <= desc.max) return desc;
+            }
+            return windDescriptions[windDescriptions.length - 1];
+        }
+
+        function updateWindmill(value) {
+            // Clamp value between 0 and MAX_VALUE
+            const clampedValue = Math.max(0, Math.min(MAX_VALUE, value));
+            lastWindValue = clampedValue;
+            
+            // Set target speed (degrees per frame at 60fps)
+            // 0 = stopped, 360 = max speed (~6 degrees per frame = 360°/s = 60 RPM)
+            targetSpeed = (clampedValue / MAX_VALUE) * 6;
+            
+            // Calculate RPM for display
+            const rpm = Math.round((targetSpeed * 60 * 60) / 360);
+            
+            // Update display
+            sensorValueEl.textContent = value;
+            windSpeedEl.textContent = Math.round(clampedValue);
+            rpmEl.textContent = rpm;
+            
+            const desc = getWindDescription(clampedValue);
+            windDescEl.textContent = desc.emoji + ' ' + desc.text;
+        }
+
+        // Main animation loop
+        function animate() {
+            // Smoothly interpolate current speed towards target speed
+            const easing = 0.02; // Lower = smoother transition
+            currentSpeed += (targetSpeed - currentSpeed) * easing;
+            
+            // Update rotation
+            currentRotation += currentSpeed;
+            if (currentRotation >= 360) currentRotation -= 360;
+            blades.style.transform = `rotate(${currentRotation}deg)`;
+            
+            // Animate grass
+            const windRatio = lastWindValue / MAX_VALUE;
+            const grassBlades = grassContainer.querySelectorAll('.grass-blade');
+            const swayAmount = windRatio * 30;
+            grassBlades.forEach((blade, i) => {
+                const offset = Math.sin(Date.now() / 200 + i) * swayAmount;
+                blade.style.transform = `rotate(${offset}deg)`;
+            });
+
+            // Move clouds
+            const clouds = cloudsContainer.querySelectorAll('.cloud');
+            const cloudSpeed = windRatio * 0.1;
+            clouds.forEach(cloud => {
+                let left = parseFloat(cloud.style.left);
+                left += cloudSpeed;
+                if (left > 110) left = -10;
+                cloud.style.left = left + '%';
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation loop
+        animate();
+
+        function handleMessage(topic, payload) {
+            if (topic !== TOPIC) return;
+            const value = parseFloat(payload);
+            if (!isNaN(value)) {
+                updateWindmill(value);
+            }
+        }
+
+        MQTTClient.on('onConnect', () => MQTTClient.subscribe(TOPIC));
+        MQTTClient.on('onMessage', handleMessage);
+
+        if (MQTTClient.isConnected()) MQTTClient.subscribe(TOPIC);
+    </script>
+</body>
+</html>
