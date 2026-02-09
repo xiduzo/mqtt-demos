@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Idea Generator</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+        }
+
+        .hero h1 {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .back-link {
+            color: #ffd700;
+        }
+
+        .back-link:hover {
+            color: #fff;
+        }
+
+        .slot-machine-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            gap: 0;
+            margin: 2rem auto;
+            max-width: 800px;
+        }
+
+        .slot-machine {
+            flex: 1;
+            background: linear-gradient(180deg, #8B0000 0%, #5c0000 20%, #3d0000 80%, #2a0000 100%);
+            border: 8px solid #ffd700;
+            border-right: 4px solid #ffd700;
+            border-radius: 20px 0 0 20px;
+            padding: 1.5rem;
+            box-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.3),
+                inset 0 0 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .slot-machine::before {
+            content: '🎰 MQTT JACKPOT 🎰';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, #ffd700, #ff8c00);
+            color: #2a0000;
+            padding: 0.5rem 2rem;
+            border-radius: 10px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            white-space: nowrap;
+        }
+
+        .reels-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: linear-gradient(180deg, #1a1a2e, #0a0a1a);
+            border: 4px solid #ffd700;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .reel {
+            width: 100%;
+        }
+
+        .reel-label {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #ffd700;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .reel-window {
+            background: linear-gradient(180deg, #fff 0%, #f0f0f0 50%, #fff 100%);
+            border: 3px solid #333;
+            border-radius: 8px;
+            height: 60px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 
+                inset 0 5px 15px rgba(0, 0, 0, 0.3),
+                0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .reel-window::before,
+        .reel-window::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 15px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .reel-window::before {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), transparent);
+        }
+
+        .reel-window::after {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(255,255,255,0.9), transparent);
+        }
+
+        .reel-strip {
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.1s ease-out;
+        }
+
+        .reel-strip.spinning {
+            transition: none;
+        }
+
+        .reel-item {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 600;
+            gap: 0.5rem;
+            color: #1a1a2e;
+            background: linear-gradient(180deg, #fff, #f5f5f5);
+        }
+
+        .reel-item .emoji {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .reel-item span:last-child {
+            line-height: 1.2;
+        }
+
+        /* Lever side panel */
+        .lever-panel {
+            width: 80px;
+            background: linear-gradient(180deg, #8B0000 0%, #5c0000 20%, #3d0000 80%, #2a0000 100%);
+            border: 8px solid #ffd700;
+            border-left: 4px solid #ffd700;
+            border-radius: 0 20px 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0.5rem;
+            box-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.3),
+                inset 0 0 50px rgba(0, 0, 0, 0.5);
+            perspective: 500px;
+            overflow: visible;
+        }
+
+        .lever-wrapper {
+            position: relative;
+            width: 50px;
+            height: 200px;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            transform-style: preserve-3d;
+        }
+
+        .lever-wrapper:active {
+            cursor: grabbing;
+        }
+
+        .lever-slot {
+            display: none;
+        }
+
+        .lever-base {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 40px;
+            background: linear-gradient(180deg, #c0c0c0, #808080, #606060);
+            border-radius: 8px;
+            box-shadow: 
+                0 4px 8px rgba(0,0,0,0.5),
+                inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+
+        .lever-arm {
+            position: absolute;
+            left: 50%;
+            bottom: 35px;
+            width: 12px;
+            height: 130px;
+            background: linear-gradient(to right, #888, #ccc, #888);
+            transform-origin: center bottom;
+            transform: translateX(-50%) rotateX(0deg);
+            border-radius: 6px;
+            transition: transform 0.1s ease-out;
+            box-shadow: 
+                2px 2px 8px rgba(0,0,0,0.4),
+                -1px -1px 4px rgba(255,255,255,0.2);
+            transform-style: preserve-3d;
+        }
+
+        .lever-arm.pulled {
+            transform: translateX(-50%) rotateX(-50deg);
+            transition: transform 0.15s ease-out;
+        }
+
+        .lever-arm.releasing {
+            transform: translateX(-50%) rotateX(0deg);
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .lever-ball {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%) translateZ(25px);
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #ff4444, #cc0000, #880000);
+            border-radius: 50%;
+            box-shadow: 
+                0 6px 12px rgba(0,0,0,0.4),
+                inset 0 -6px 12px rgba(0,0,0,0.3),
+                inset 0 6px 12px rgba(255,255,255,0.3);
+        }
+
+        .lever-label {
+            font-size: 0.65rem;
+            color: #ffd700;
+            text-align: center;
+            margin-top: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .lever-wrapper.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Decorative lights */
+        .lights {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 1rem;
+        }
+
+        .light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: blink 0.5s ease-in-out infinite alternate;
+        }
+
+        .light:nth-child(odd) { background: #ff0; box-shadow: 0 0 10px #ff0; }
+        .light:nth-child(even) { background: #f00; box-shadow: 0 0 10px #f00; animation-delay: 0.25s; }
+
+        .lights.spinning .light {
+            animation: blink 0.1s ease-in-out infinite alternate;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        /* Prompt output */
+        .prompt-output {
+            margin-top: 2rem;
+            background: linear-gradient(180deg, #2a0a0a, #1a0505);
+            border: 4px solid #ffd700;
+            border-radius: 16px;
+            padding: 1.5rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .prompt-output h3 {
+            font-size: 0.9rem;
+            color: #ffd700;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .prompt-text {
+            background: #0a0a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #f0f0f0;
+            min-height: 80px;
+        }
+
+        .prompt-text .highlight {
+            color: #ffd700;
+            font-weight: 600;
+        }
+
+        .prompt-text .sensor {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .copy-button {
+            margin-top: 1rem;
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(180deg, #ffd700, #ff8c00);
+            color: #2a0000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .copy-button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .copy-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .copy-button.copied {
+            background: linear-gradient(180deg, #00ff88, #00cc66);
+        }
+
+        .instructions {
+            text-align: center;
+            color: #ffd700;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Win animation */
+        @keyframes jackpot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .slot-machine-wrapper.winner {
+            animation: jackpot 0.3s ease-in-out 3;
+        }
+
+        .winner .lights .light {
+            animation: blink 0.08s ease-in-out infinite alternate;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Idea Generator</div>
+    </nav>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← Back to Examples</a>
+        
+        <section class="hero">
+            <h1>🎰 Project Idea Generator</h1>
+            <p style="color: #ccc;">Pull the lever to generate your MQTT project prompt!</p>
+        </section>
+
+        <p class="instructions">
+            Drag the lever down and release to spin • Copy the prompt for Figma Make!
+        </p>
+
+        <div class="slot-machine-wrapper" id="slotMachineWrapper">
+            <div class="slot-machine">
+                <div class="lights" id="lights">
+                    <div class="light"></div>
+                    <div class="light"></div>
+                    <div class="light"></div>
+                    <div class="light"></div>
+                    <div class="light"></div>
+                    <div class="light"></div>
+                    <div class="light"></div>
+                </div>
+                
+                <div class="reels-container">
+                    <div class="reel">
+                        <div class="reel-label">🎯 Project Topic</div>
+                        <div class="reel-window" id="topicReel">
+                            <div class="reel-strip" id="topicStrip"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="reel">
+                        <div class="reel-label">🔌 Sensor</div>
+                        <div class="reel-window" id="sensorReel">
+                            <div class="reel-strip" id="sensorStrip"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lever-panel">
+                <div class="lever-wrapper" id="leverWrapper">
+                    <div class="lever-slot"></div>
+                    <div class="lever-arm" id="leverArm">
+                        <div class="lever-ball"></div>
+                    </div>
+                    <div class="lever-base"></div>
+                </div>
+                <div class="lever-label">Pull!</div>
+            </div>
+        </div>
+
+        <div class="prompt-output">
+            <h3>🎁 Your Generated Prompt</h3>
+            <div class="prompt-text" id="promptText">
+                <em style="color: #666;">Pull the lever to generate your prompt...</em>
+            </div>
+            <button class="copy-button" id="copyBtn" disabled>
+                <span>📋</span> Copy Prompt
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const topics = [
+            { emoji: '🌅', text: 'a sunrise/sunset sky animation with moving clouds' },
+            { emoji: '🌊', text: 'an ocean wave simulator with boats bobbing on the water' },
+            { emoji: '🎠', text: 'a carousel/merry-go-round with spinning horses' },
+            { emoji: '🌸', text: 'a flower garden where flowers bloom and close' },
+            { emoji: '🎈', text: 'floating balloons that rise and pop' },
+            { emoji: '🏔️', text: 'a mountain scene with moving cable cars' },
+            { emoji: '🚂', text: 'a train that speeds up and slows down on tracks' },
+            { emoji: '🎡', text: 'a ferris wheel with glowing cabins at night' },
+            { emoji: '🌋', text: 'a volcano that erupts with lava particles' },
+            { emoji: '🦋', text: 'butterflies that flutter around a meadow' },
+            { emoji: '🌈', text: 'a rainbow that fades in and out with rain' },
+            { emoji: '🎪', text: 'a circus tent with animated performers' },
+            { emoji: '🏄', text: 'a surfer riding waves of different heights' },
+            { emoji: '🎸', text: 'guitar strings that vibrate and make visual sound waves' },
+            { emoji: '🌙', text: 'a starry night sky with shooting stars' },
+            { emoji: '🐟', text: 'an aquarium with fish swimming at different speeds' },
+            { emoji: '🎃', text: 'a jack-o-lantern with flickering candle glow' },
+            { emoji: '❄️', text: 'a snow globe with swirling snowflakes' },
+            { emoji: '🔥', text: 'a campfire with dancing flames and smoke' },
+            { emoji: '🌻', text: 'sunflowers that follow a moving sun across the sky' },
+            { emoji: '🎆', text: 'a fireworks display that launches on command' },
+            { emoji: '🦜', text: 'birds that fly across the screen in formation' },
+            { emoji: '⛵', text: 'a sailboat that tilts and moves with the wind' },
+            { emoji: '🌪️', text: 'a tornado that grows and shrinks in intensity' },
+            { emoji: '🎹', text: 'piano keys that light up and play notes visually' }
+        ];
+
+        const sensors = [
+            { emoji: '↕️', text: 'the tilt sensor', desc: 'to control movement based on orientation' },
+            { emoji: '🎚️', text: 'the potentiometer', desc: 'to smoothly control intensity or speed' },
+            { emoji: '☀️', text: 'the LDR (light sensor)', desc: 'to react to ambient light levels' },
+            { emoji: '🔘', text: 'button A', desc: 'to trigger actions on press' },
+            { emoji: '⭕', text: 'button B', desc: 'to toggle states or modes' },
+            { emoji: '🔘⭕', text: 'both buttons together', desc: 'for start/stop or dual controls' },
+            { emoji: '↕️🎚️', text: 'the tilt sensor combined with the potentiometer', desc: 'for direction and speed control' },
+            { emoji: '☀️🎚️', text: 'the LDR combined with the potentiometer', desc: 'mixing environmental and manual input' },
+            { emoji: '↕️☀️', text: 'the tilt sensor combined with the LDR', desc: 'for motion and light-reactive behavior' }
+        ];
+
+        const BROKER = 'wss://mqtt-public.xiduzo.com:443/mqtt';
+        
+        let isSpinning = false;
+        let currentTopic = null;
+        let currentSensor = null;
+
+        const topicStrip = document.getElementById('topicStrip');
+        const sensorStrip = document.getElementById('sensorStrip');
+        const promptText = document.getElementById('promptText');
+        const copyBtn = document.getElementById('copyBtn');
+        const leverWrapper = document.getElementById('leverWrapper');
+        const leverArm = document.getElementById('leverArm');
+        const lights = document.getElementById('lights');
+        const slotMachineWrapper = document.getElementById('slotMachineWrapper');
+
+        // Initialize reels
+        function initReels() {
+            const topicItems = [...topics, ...topics, ...topics, ...topics];
+            const sensorItems = [...sensors, ...sensors, ...sensors, ...sensors];
+
+            topicStrip.innerHTML = topicItems.map(t => `
+                <div class="reel-item">
+                    <span class="emoji">${t.emoji}</span>
+                    <span>${t.text}</span>
+                </div>
+            `).join('');
+
+            sensorStrip.innerHTML = sensorItems.map(s => `
+                <div class="reel-item">
+                    <span class="emoji">${s.emoji}</span>
+                    <span>${s.text}</span>
+                </div>
+            `).join('');
+        }
+
+        function spin() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            leverWrapper.classList.add('disabled');
+            lights.classList.add('spinning');
+            copyBtn.disabled = true;
+
+            const topicIndex = Math.floor(Math.random() * topics.length);
+            const sensorIndex = Math.floor(Math.random() * sensors.length);
+
+            currentTopic = topics[topicIndex];
+            currentSensor = sensors[sensorIndex];
+
+            const itemHeight = 60;
+            const spins = 3;
+            
+            topicStrip.classList.add('spinning');
+            sensorStrip.classList.add('spinning');
+
+            let topicPos = 0;
+            let sensorPos = 0;
+            const topicTarget = (spins * topics.length + topicIndex) * itemHeight;
+            const sensorTarget = (spins * sensors.length + sensorIndex) * itemHeight;
+            
+            const duration = 2500;
+            const startTime = Date.now();
+
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                
+                topicPos = eased * topicTarget;
+                sensorPos = eased * sensorTarget;
+
+                topicStrip.style.transform = `translateY(-${topicPos % (topics.length * itemHeight)}px)`;
+                sensorStrip.style.transform = `translateY(-${sensorPos % (sensors.length * itemHeight)}px)`;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    finishSpin(topicIndex, sensorIndex);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function finishSpin(topicIndex, sensorIndex) {
+            topicStrip.classList.remove('spinning');
+            sensorStrip.classList.remove('spinning');
+            
+            topicStrip.style.transform = `translateY(-${topicIndex * 60}px)`;
+            sensorStrip.style.transform = `translateY(-${sensorIndex * 60}px)`;
+
+            // Winner animation
+            slotMachineWrapper.classList.add('winner');
+            setTimeout(() => slotMachineWrapper.classList.remove('winner'), 1000);
+
+            generatePrompt();
+
+            isSpinning = false;
+            leverWrapper.classList.remove('disabled');
+            lights.classList.remove('spinning');
+            copyBtn.disabled = false;
+        }
+
+        function generatePrompt() {
+            const promptString = `Using MQTT with the broker \`${BROKER}\` build me ${currentTopic.text} using ${currentSensor.text} ${currentSensor.desc}.`;
+            
+            promptText.innerHTML = `
+                Using MQTT with the broker <span class="highlight">\`${BROKER}\`</span> build me 
+                <span class="highlight">${currentTopic.text}</span> 
+                using <span class="sensor">${currentSensor.text}</span> ${currentSensor.desc}.
+            `;
+
+            promptText.dataset.plainText = promptString;
+        }
+
+        async function copyPrompt() {
+            const text = promptText.dataset.plainText;
+            if (!text) return;
+
+            try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.classList.add('copied');
+                copyBtn.innerHTML = '<span>✅</span> Copied!';
+                
+                setTimeout(() => {
+                    copyBtn.classList.remove('copied');
+                    copyBtn.innerHTML = '<span>📋</span> Copy Prompt';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        }
+
+        copyBtn.addEventListener('click', copyPrompt);
+
+        // Lever interaction
+        let isDragging = false;
+        let startY = 0;
+        let leverPulled = false;
+
+        function handleLeverStart(e) {
+            if (isSpinning) return;
+            isDragging = true;
+            startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            e.preventDefault();
+        }
+
+        function handleLeverMove(e) {
+            if (!isDragging || isSpinning) return;
+            
+            const currentY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            const deltaY = currentY - startY;
+            
+            if (deltaY > 40 && !leverPulled) {
+                leverPulled = true;
+                leverArm.classList.add('pulled');
+            }
+        }
+
+        function handleLeverEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            if (leverPulled && !isSpinning) {
+                leverArm.classList.remove('pulled');
+                leverArm.classList.add('releasing');
+                
+                setTimeout(() => {
+                    leverArm.classList.remove('releasing');
+                    spin();
+                }, 150);
+            }
+            
+            leverPulled = false;
+        }
+
+        leverWrapper.addEventListener('mousedown', handleLeverStart);
+        document.addEventListener('mousemove', handleLeverMove);
+        document.addEventListener('mouseup', handleLeverEnd);
+
+        leverWrapper.addEventListener('touchstart', handleLeverStart, { passive: false });
+        document.addEventListener('touchmove', handleLeverMove, { passive: false });
+        document.addEventListener('touchend', handleLeverEnd);
+
+        initReels();
+    </script>
+</body>
+</html>

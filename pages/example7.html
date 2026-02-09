@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 7 - MQTT Button</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: calc(100vh - 60px);
+            gap: 2rem;
+        }
+
+        .mqtt-button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            box-shadow: 
+                20px 20px 60px #0a0f1a,
+                -20px -20px 60px #1a2744,
+                inset 0 0 0 4px var(--border);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .mqtt-button:hover {
+            box-shadow: 
+                20px 20px 60px #0a0f1a,
+                -20px -20px 60px #1a2744,
+                inset 0 0 0 4px var(--primary);
+        }
+
+        .mqtt-button:active,
+        .mqtt-button.pressed {
+            background: linear-gradient(145deg, #0f172a, #1e293b);
+            box-shadow: 
+                inset 10px 10px 30px #0a0f1a,
+                inset -10px -10px 30px #1a2744,
+                inset 0 0 0 4px var(--success);
+            transform: scale(0.98);
+        }
+
+        .mqtt-button.pressed .button-icon {
+            color: var(--success);
+            text-shadow: 0 0 20px var(--success);
+        }
+
+        .button-icon {
+            color: var(--text-muted);
+            transition: all 0.1s ease;
+        }
+
+        .status-display {
+            text-align: center;
+        }
+
+        .state-label {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .state-value {
+            font-size: 3rem;
+            font-weight: 700;
+            font-family: 'Monaco', 'Menlo', monospace;
+            transition: color 0.1s ease;
+        }
+
+        .state-value.pressed {
+            color: var(--success);
+            text-shadow: 0 0 10px var(--success);
+        }
+
+        .state-value.released {
+            color: var(--text-muted);
+        }
+
+        .topic-display {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1rem;
+        }
+
+        .instructions {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <main class="button-container">
+        <div class="status-display">
+            <div class="state-label">Button State</div>
+            <div class="state-value released" id="stateValue">RELEASED</div>
+        </div>
+
+        <button class="mqtt-button" id="mqttButton">
+            <span class="button-icon">👆</span>
+        </button>
+
+        <div class="instructions">
+            Press and hold the button to send "pressed" state.<br>
+            Release to send "released" state.
+        </div>
+
+        <div class="topic-display">topic: button/1</div>
+    </main>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script>
+        const TOPIC = 'button/1';
+        const button = document.getElementById('mqttButton');
+        const stateValue = document.getElementById('stateValue');
+
+        let isPressed = false;
+
+        function sendState(pressed) {
+            if (isPressed === pressed) return; // Avoid duplicate sends
+            isPressed = pressed;
+
+            const state = pressed ? 'pressed' : 'released';
+            MQTTClient.publish(TOPIC, state);
+
+            // Update UI
+            button.classList.toggle('pressed', pressed);
+            stateValue.textContent = state.toUpperCase();
+            stateValue.classList.toggle('pressed', pressed);
+            stateValue.classList.toggle('released', !pressed);
+        }
+
+        // Mouse events
+        button.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            sendState(true);
+        });
+
+        button.addEventListener('mouseup', () => sendState(false));
+        button.addEventListener('mouseleave', () => {
+            if (isPressed) sendState(false);
+        });
+
+        // Touch events for mobile
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            sendState(true);
+        });
+
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            sendState(false);
+        });
+
+        button.addEventListener('touchcancel', () => sendState(false));
+
+        // Keyboard support (Space/Enter)
+        button.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+                e.preventDefault();
+                sendState(true);
+            }
+        });
+
+        button.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                sendState(false);
+            }
+        });
+
+        // Ensure button releases if window loses focus
+        window.addEventListener('blur', () => {
+            if (isPressed) sendState(false);
+        });
+    </script>
+</body>
+</html>
