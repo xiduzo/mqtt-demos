@@ -21,7 +21,7 @@ signal rotation_received(rotation_data: Dictionary)
 ## Unique client identifier for this MQTT connection
 @export var client_id: String = "godot_cube_client"
 ## The MQTT topic to subscribe to for rotation messages
-@export var rotation_topic: String = "cube/rotation/rotation"
+@export var rotation_topic: String = "phone/sensors/rotation"
 ## Delay in seconds before attempting to reconnect after a connection failure
 @export var reconnect_delay: float = 5.0
 ## Optional MQTTConfig resource to load configuration from
