@@ -494,6 +494,7 @@
         ];
 
         const sensors = [
+            // Hardware sensors
             { emoji: '↕️', text: 'the tilt sensor', desc: 'to control movement based on orientation' },
             { emoji: '🎚️', text: 'the potentiometer', desc: 'to smoothly control intensity or speed' },
             { emoji: '☀️', text: 'the LDR (light sensor)', desc: 'to react to ambient light levels' },
@@ -502,7 +503,17 @@
             { emoji: '🔘⭕', text: 'both buttons together', desc: 'for start/stop or dual controls' },
             { emoji: '↕️🎚️', text: 'the tilt sensor combined with the potentiometer', desc: 'for direction and speed control' },
             { emoji: '☀️🎚️', text: 'the LDR combined with the potentiometer', desc: 'mixing environmental and manual input' },
-            { emoji: '↕️☀️', text: 'the tilt sensor combined with the LDR', desc: 'for motion and light-reactive behavior' }
+            { emoji: '↕️☀️', text: 'the tilt sensor combined with the LDR', desc: 'for motion and light-reactive behavior' },
+            // Phone sensors
+            { emoji: '📱', text: 'the phone accelerometer (phone/sensors/accelerometer)', desc: 'to detect phone movement and shaking' },
+            { emoji: '🔄', text: 'the phone gyroscope (phone/sensors/gyroscope)', desc: 'to track phone rotation speed' },
+            { emoji: '🧭', text: 'the phone magnetometer (phone/sensors/magnetometer)', desc: 'to detect compass direction and magnetic fields' },
+            { emoji: '📐', text: 'the phone rotation sensor (phone/sensors/rotation)', desc: 'to control with phone tilt (pitch, yaw, roll)' },
+            { emoji: '🎤', text: 'the phone microphone (phone/sensors/microphone)', desc: 'to react to sound levels and volume' },
+            { emoji: '🌡️', text: 'the phone barometer (phone/sensors/barometer)', desc: 'to detect air pressure changes' },
+            { emoji: '👟', text: 'the phone pedometer (phone/sensors/pedometer)', desc: 'to count steps and track walking' },
+            { emoji: '📱↕️', text: 'phone rotation combined with hardware tilt', desc: 'for dual-device orientation control' },
+            { emoji: '🎤🎚️', text: 'phone microphone combined with potentiometer', desc: 'for sound-reactive intensity control' }
         ];
 
         const BROKER = 'wss://mqtt-public.xiduzo.com:443/mqtt';

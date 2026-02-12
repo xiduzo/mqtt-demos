@@ -11,7 +11,7 @@
 # Example 1 & 7 (Button) > connect hardware to website to Figma
 1. show example 1 and send messages to it
 2. ask students to send messages to the topic (sensor/value)
-3. connect Arduino and click button
+3. connect Arduino and click button (then tilt sensor)
 4. show Figma and what the button can do
 5. show Example 7 and control Figma -> someone else control my Figma
 
