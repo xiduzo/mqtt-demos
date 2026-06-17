@@ -205,14 +205,14 @@
             <div>RPM: <span id="rpm">0</span></div>
         </div>
 
-        <div class="topic-display">topics: sensor/value, phone/sensors/microphone</div>
+        <div class="topic-display">topics: sensor/value, mobile/sensors/microphone</div>
     </main>
 
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script src="../js/mqtt-client.js"></script>
     <script>
         const TOPIC = 'sensor/value';
-        const MIC_TOPIC = 'phone/sensors/microphone';
+        const MIC_TOPIC = 'mobile/sensors/microphone';
         const MAX_VALUE = 360;
 
         const blades = document.getElementById('blades');
@@ -334,9 +334,11 @@
                     updateWindmill(value);
                 }
             } else if (topic === MIC_TOPIC) {
-                // Parse microphone data: {"level":0.5460054397583007,"db":-27.239673614501953}
+                // sensor-sender envelope: {type,timestamp,data:{level,db},delta}
+                // (older format published {level,db} flat — support both)
                 try {
-                    const data = JSON.parse(payload);
+                    const parsed = JSON.parse(payload);
+                    const data = (parsed && typeof parsed.data === 'object' && parsed.data) ? parsed.data : parsed;
                     if (data.level !== undefined) {
                         // Map level (0-1) to wind speed (0-360)
                         // level is 0-100% where 1 = 100%

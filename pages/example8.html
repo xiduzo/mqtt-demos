@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 8 - Phone-Flown Plane</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        body { overflow: hidden; }
+
+        #scene {
+            position: fixed;
+            inset: 60px 0 0 0;
+            display: block;
+        }
+
+        .hud {
+            position: fixed;
+            top: 76px;
+            left: 16px;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            backdrop-filter: blur(8px);
+            max-width: 280px;
+        }
+
+        .hud h3 {
+            margin: 0 0 0.5rem;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .hud .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .hud .row span:last-child {
+            color: var(--primary);
+        }
+
+        .hud .topic {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            word-break: break-all;
+        }
+
+        .hud .hint {
+            margin-top: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
+
+        .waiting {
+            color: var(--warning, #f59e0b);
+        }
+
+        .live {
+            color: var(--success);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <canvas id="scene"></canvas>
+
+    <div class="hud">
+        <h3>✈️ Phone-Flown Plane</h3>
+        <div class="row"><span>Signal</span><span id="signal" class="waiting">waiting…</span></div>
+        <div class="row"><span>Pitch</span><span id="pitch">0°</span></div>
+        <div class="row"><span>Roll</span><span id="roll">0°</span></div>
+        <div class="row"><span>Yaw</span><span id="yaw">0°</span></div>
+        <div class="topic">topic: mobile/sensors/rotation</div>
+        <div class="hint">
+            Open the <strong>sensor-sender</strong> app on your phone, point its
+            MQTT transport at the same broker, and stream the
+            <strong>device motion</strong> sensor. Tilt the phone to fly.
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        const TOPIC = 'mobile/sensors/rotation';
+        const DEG = Math.PI / 180;
+
+        // --- Scene setup -------------------------------------------------
+        const canvas = document.getElementById('scene');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87bdf2);
+        scene.fog = new THREE.Fog(0x87bdf2, 60, 320);
+
+        const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+
+        // Lighting
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x4f6b3a, 1.0));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+        sun.position.set(40, 80, 30);
+        scene.add(sun);
+
+        // --- Ground (scrolls to fake forward motion) ---------------------
+        const groundTex = makeGridTexture();
+        groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+        groundTex.repeat.set(60, 60);
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(2000, 2000),
+            new THREE.MeshStandardMaterial({ map: groundTex, color: 0x6ab04c })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -12;
+        scene.add(ground);
+
+        // Floating reference markers so motion is visible against the world
+        const markers = new THREE.Group();
+        const markerGeo = new THREE.BoxGeometry(3, 16, 3);
+        const markerMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        for (let i = 0; i < 40; i++) {
+            const m = new THREE.Mesh(markerGeo, markerMat);
+            m.position.set((Math.random() - 0.5) * 400, -4, -Math.random() * 600);
+            markers.add(m);
+        }
+        scene.add(markers);
+
+        // --- Plane (assembled from primitives, nose toward -Z) -----------
+        const plane = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, metalness: 0.3, roughness: 0.5 });
+        const accentMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.2, roughness: 0.6 });
+
+        // Fuselage: capsule axis along Z
+        const fuselage = new THREE.Mesh(new THREE.CapsuleGeometry(0.8, 4, 8, 16), bodyMat);
+        fuselage.rotation.x = Math.PI / 2;
+        plane.add(fuselage);
+
+        // Nose cone pointing -Z
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 16), bodyMat);
+        nose.rotation.x = -Math.PI / 2;
+        nose.position.z = -3.2;
+        plane.add(nose);
+
+        // Main wing spans X
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(9, 0.2, 1.6), accentMat);
+        plane.add(wing);
+
+        // Tail wing (behind, +Z)
+        const tailWing = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.18, 1), accentMat);
+        tailWing.position.z = 2.8;
+        plane.add(tailWing);
+
+        // Vertical fin
+        const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.6, 1), bodyMat);
+        tailFin.position.set(0, 0.8, 2.8);
+        plane.add(tailFin);
+
+        scene.add(plane);
+
+        // --- MQTT --------------------------------------------------------
+        const signalEl = document.getElementById('signal');
+        const pitchEl = document.getElementById('pitch');
+        const rollEl = document.getElementById('roll');
+        const yawEl = document.getElementById('yaw');
+
+        // Target attitude (radians), smoothed toward each frame
+        const target = { pitch: 0, roll: 0, yaw: 0 };
+
+        function extractRotation(payload) {
+            let json;
+            try { json = JSON.parse(payload); } catch { return null; }
+            // sensor-sender wire envelope: { type, timestamp, data, delta }
+            const d = (json && typeof json.data === 'object' && json.data) ? json.data : json;
+            if (!d) return null;
+            const num = (v) => (typeof v === 'number' ? v : 0);
+            return { x: num(d.x), y: num(d.y), z: num(d.z) };
+        }
+
+        function onMessage(topic, payload) {
+            if (topic !== TOPIC) return;
+            const r = extractRotation(payload);
+            if (!r) return;
+
+            // x = beta (pitch), y = gamma (roll), z = alpha (yaw), all degrees
+            target.pitch = r.x * DEG;
+            target.roll = r.y * DEG;
+            target.yaw = r.z * DEG;
+
+            signalEl.textContent = 'live';
+            signalEl.className = 'live';
+            pitchEl.textContent = `${r.x.toFixed(0)}°`;
+            rollEl.textContent = `${r.y.toFixed(0)}°`;
+            yawEl.textContent = `${r.z.toFixed(0)}°`;
+        }
+
+        MQTTClient.on('onConnect', () => MQTTClient.subscribe(TOPIC));
+        MQTTClient.on('onMessage', onMessage);
+        if (MQTTClient.isConnected()) MQTTClient.subscribe(TOPIC);
+
+        // --- Render loop -------------------------------------------------
+        function resize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight - 60;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const cur = { pitch: 0, roll: 0, yaw: 0 };
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Smooth toward target attitude
+            cur.pitch += (target.pitch - cur.pitch) * 0.08;
+            cur.roll += (target.roll - cur.roll) * 0.08;
+            cur.yaw += (target.yaw - cur.yaw) * 0.08;
+
+            // Apply attitude to the plane (banked turn look)
+            plane.rotation.set(-cur.pitch, cur.yaw, -cur.roll, 'YXZ');
+
+            // Scroll the world to fake constant forward flight; bank steers drift
+            groundTex.offset.y -= 0.0025;
+            markers.children.forEach((m) => {
+                m.position.z += 1.4;
+                m.position.x -= cur.roll * 0.6;
+                if (m.position.z > 30) {
+                    m.position.z = -600;
+                    m.position.x = (Math.random() - 0.5) * 400;
+                }
+            });
+
+            // Chase camera frames the plane dead-center (pulled back for margin)
+            camera.position.set(0, 3, 20);
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- Helpers -----------------------------------------------------
+        function makeGridTexture() {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#6ab04c';
+            ctx.fillRect(0, 0, 64, 64);
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(c);
+        }
+    </script>
+</body>
+</html>

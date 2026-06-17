@@ -113,6 +113,7 @@ const MQTTClient = {
         { href: 'pages/example5.html', label: 'Example 5' },
         { href: 'pages/example6.html', label: 'Example 6' },
         { href: 'pages/example7.html', label: 'Example 7' },
+        { href: 'pages/example8.html', label: 'Example 8' },
     ],
 
     init() {
