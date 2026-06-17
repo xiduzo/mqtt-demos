@@ -106,14 +106,15 @@ const MQTTClient = {
 
     navLinks: [
         { href: 'index.html', label: 'Home' },
-        { href: 'pages/example1.html', label: 'Example 1' },
-        { href: 'pages/example2.html', label: 'Example 2' },
-        { href: 'pages/example3.html', label: 'Example 3' },
-        { href: 'pages/example4.html', label: 'Example 4' },
-        { href: 'pages/example5.html', label: 'Example 5' },
-        { href: 'pages/example6.html', label: 'Example 6' },
-        { href: 'pages/example7.html', label: 'Example 7' },
-        { href: 'pages/example8.html', label: 'Example 8' },
+        { href: 'pages/example1.html', label: 'LDR Sensor' },
+        { href: 'pages/example2.html', label: 'Day/Night Cycle' },
+        { href: 'pages/example3.html', label: 'Windmill' },
+        { href: 'pages/example4.html', label: 'Mic Windmill' },
+        { href: 'pages/example5.html', label: 'RGB Color Mixer' },
+        { href: 'pages/example6.html', label: 'Shared Whiteboard' },
+        { href: 'pages/example7.html', label: 'Button' },
+        { href: 'pages/example8.html', label: 'Phone-Flown Plane' },
+        { href: 'pages/example9.html', label: 'Platonic Solids' },
     ],
 
     init() {
@@ -135,41 +136,69 @@ const MQTTClient = {
 
         // Determine if we're in a subdirectory
         const isSubpage = window.location.pathname.includes('/pages/');
-        const prefix = isSubpage ? '../' : '';
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+
+        // Adjust an href for the current location (root vs /pages/)
+        const adjust = (href) => {
+            if (!isSubpage) return href;
+            return href.startsWith('pages/') ? href.replace('pages/', '') : '../' + href;
+        };
+
+        // Brand doubles as the Home link
+        const brand = navbar.querySelector('.nav-brand');
+        if (brand && brand.tagName !== 'A') {
+            const a = document.createElement('a');
+            a.className = 'nav-brand';
+            a.href = adjust('index.html');
+            a.textContent = brand.textContent;
+            brand.replaceWith(a);
+        }
 
         // Clear existing nav-links
         const existingLinks = navbar.querySelector('.nav-links');
         if (existingLinks) existingLinks.remove();
 
-        // Build nav links
+        // Everything except Home goes into a dropdown (the list got long)
+        const exampleLinks = this.navLinks.filter(l => l.href !== 'index.html');
+
         const ul = document.createElement('ul');
         ul.className = 'nav-links';
-        
-        this.navLinks.forEach(link => {
-            const li = document.createElement('li');
+
+        const li = document.createElement('li');
+        li.className = 'nav-dropdown';
+
+        const toggle = document.createElement('button');
+        toggle.className = 'nav-dropdown-toggle';
+        toggle.type = 'button';
+
+        const menu = document.createElement('ul');
+        menu.className = 'nav-dropdown-menu';
+
+        let activeLabel = null;
+        exampleLinks.forEach(link => {
+            const mli = document.createElement('li');
             const a = document.createElement('a');
-            
-            // Adjust href based on current location
-            let href = link.href;
-            if (isSubpage) {
-                href = link.href.startsWith('pages/') 
-                    ? link.href.replace('pages/', '') 
-                    : '../' + link.href;
-            }
-            
-            a.href = href;
+            a.href = adjust(link.href);
             a.textContent = link.label;
-            
-            // Mark current page as active
-            const linkPage = link.href.split('/').pop();
-            if (linkPage === currentPage) {
+            if (link.href.split('/').pop() === currentPage) {
                 a.className = 'active';
+                activeLabel = link.label;
             }
-            
-            li.appendChild(a);
-            ul.appendChild(li);
+            mli.appendChild(a);
+            menu.appendChild(mli);
         });
+
+        toggle.textContent = (activeLabel || 'Examples') + ' ▾';
+
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            li.classList.toggle('open');
+        });
+        document.addEventListener('click', () => li.classList.remove('open'));
+
+        li.appendChild(toggle);
+        li.appendChild(menu);
+        ul.appendChild(li);
 
         // Insert after nav-brand
         const navBrand = navbar.querySelector('.nav-brand');

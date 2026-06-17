@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 9 - Platonic Solids</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        body { overflow: hidden; }
+
+        #scene {
+            position: fixed;
+            inset: 60px 0 0 0;
+            display: block;
+        }
+
+        .label {
+            position: fixed;
+            top: 76px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: var(--text);
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+        }
+
+        .label .name {
+            font-size: 2rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+
+        .label .faces {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .picker {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 0.75rem;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0.75rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .picker button {
+            width: 84px;
+            height: 84px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.72rem;
+            transition: transform 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+        }
+
+        .picker button:hover { transform: translateY(-4px); }
+
+        .picker button canvas {
+            width: 44px;
+            height: 44px;
+        }
+
+        .picker button.active {
+            border-color: var(--primary);
+            color: var(--text);
+            background: rgba(225, 29, 72, 0.18);
+        }
+
+        .topic {
+            position: fixed;
+            top: 76px;
+            right: 16px;
+            z-index: 10;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.5rem 0.75rem;
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MQTT Examples</div>
+    </nav>
+
+    <canvas id="scene"></canvas>
+
+    <div class="label">
+        <div class="name" id="name">—</div>
+        <div class="faces" id="faces">pick a solid below</div>
+    </div>
+
+    <div class="picker" id="picker"></div>
+
+    <div class="topic">topic: platonic/selected</div>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="../js/mqtt-client.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        const TOPIC = 'platonic/selected';
+
+        // The five Platonic solids and their three.js geometry factories.
+        const SOLIDS = [
+            { id: 'tetrahedron',  faces: 4,  geo: () => new THREE.TetrahedronGeometry(1.4) },
+            { id: 'cube',         faces: 6,  geo: () => new THREE.BoxGeometry(2, 2, 2) },
+            { id: 'octahedron',   faces: 8,  geo: () => new THREE.OctahedronGeometry(1.5) },
+            { id: 'dodecahedron', faces: 12, geo: () => new THREE.DodecahedronGeometry(1.4) },
+            { id: 'icosahedron',  faces: 20, geo: () => new THREE.IcosahedronGeometry(1.5) },
+        ];
+        const byId = Object.fromEntries(SOLIDS.map((s) => [s.id, s]));
+
+        // --- Big display scene ------------------------------------------
+        const canvas = document.getElementById('scene');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+
+        const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+        camera.position.set(0, 0, 6);
+
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.1));
+        const key = new THREE.DirectionalLight(0xffffff, 1.6);
+        key.position.set(4, 6, 5);
+        scene.add(key);
+
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0xe11d48, metalness: 0.35, roughness: 0.35, flatShading: true,
+        });
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0xf8fafc });
+
+        const solidGroup = new THREE.Group();
+        scene.add(solidGroup);
+
+        function showSolid(id) {
+            const def = byId[id];
+            if (!def) return;
+            solidGroup.clear();
+            const geo = def.geo();
+            solidGroup.add(new THREE.Mesh(geo, mat));
+            solidGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat));
+
+            document.getElementById('name').textContent = def.id;
+            document.getElementById('faces').textContent = `${def.faces} faces`;
+            picker.querySelectorAll('button').forEach((b) =>
+                b.classList.toggle('active', b.dataset.id === id));
+        }
+
+        // --- Picker (small spinning previews) ---------------------------
+        const picker = document.getElementById('picker');
+        const previews = [];
+
+        SOLIDS.forEach((def) => {
+            const btn = document.createElement('button');
+            btn.dataset.id = def.id;
+
+            const pCanvas = document.createElement('canvas');
+            btn.appendChild(pCanvas);
+            const span = document.createElement('span');
+            span.textContent = def.id;
+            btn.appendChild(span);
+            picker.appendChild(btn);
+
+            // Each preview is its own tiny renderer/scene.
+            const pRenderer = new THREE.WebGLRenderer({ canvas: pCanvas, antialias: true, alpha: true });
+            pRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            pRenderer.setSize(44, 44);
+            const pScene = new THREE.Scene();
+            const pCam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+            pCam.position.set(0, 0, 4.2);
+            pScene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.2));
+            const pMesh = new THREE.Mesh(def.geo(), mat);
+            pScene.add(pMesh);
+            previews.push({ pRenderer, pScene, pCam, pMesh });
+
+            // Clicking selects locally AND publishes so every screen syncs.
+            btn.addEventListener('click', () => select(def.id));
+        });
+
+        function select(id) {
+            showSolid(id);
+            MQTTClient.publish(TOPIC, id, { retain: true });
+        }
+
+        // --- MQTT: listen + publish on the same topic -------------------
+        MQTTClient.on('onConnect', () => MQTTClient.subscribe(TOPIC));
+        MQTTClient.on('onMessage', (topic, payload) => {
+            if (topic !== TOPIC) return;
+            const id = payload.trim();
+            if (byId[id]) showSolid(id);
+        });
+        if (MQTTClient.isConnected()) MQTTClient.subscribe(TOPIC);
+
+        // Default until a retained/live message arrives.
+        showSolid('icosahedron');
+
+        // --- Render loop ------------------------------------------------
+        function resize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight - 60;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            solidGroup.rotation.y += 0.006;
+            solidGroup.rotation.x += 0.0025;
+            renderer.render(scene, camera);
+
+            previews.forEach((p) => {
+                p.pMesh.rotation.y += 0.02;
+                p.pMesh.rotation.x += 0.01;
+                p.pRenderer.render(p.pScene, p.pCam);
+            });
+        }
+        animate();
+    </script>
+</body>
+</html>
